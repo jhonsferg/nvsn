@@ -1,0 +1,14 @@
+# Statically link the C runtime on Windows MSVC targets.
+#
+# By default `x86_64-pc-windows-msvc`/`aarch64-pc-windows-msvc` dynamically
+# link against VCRUNTIME140.dll, which ships with the Visual C++
+# Redistributable and is not guaranteed to be present on every Windows
+# install. Even though gvsn has no C/C++ dependencies of its own, the MSVC
+# target itself pulls this in - causing a "missing DLL" error on machines
+# that never had the redistributable installed. Static linking removes the
+# runtime dependency entirely.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
