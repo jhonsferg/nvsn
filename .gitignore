@@ -1,0 +1,54 @@
+# Hidden directories at the repo root are excluded from git by default:
+# local notes, AI coding assistant configuration and similar tooling do not
+# belong in the published history. Explicit exceptions:
+#   .github/ - required by GitHub for workflows and templates.
+#   .cargo/  - required so other clones get the Windows MSVC crt-static
+#              linker flag in .cargo/config.toml.
+# .docs/ (internal notes, excluded from git) falls under this rule already;
+# it is listed explicitly below too, for clarity.
+/.*/
+!/.github/
+!/.cargo/
+
+# AI coding assistant configuration and local-only notes
+CLAUDE.md
+.cursor/
+.aider*
+.docs/
+
+# Rust build output and binaries
+target/
+dist/
+build/
+*.exe
+*.msi
+*.tar.gz
+*.zip
+
+# Dependencies
+node_modules/
+vendor/
+
+# Secrets and credentials (critical)
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.toml
+
+# Residual files, cache and logs
+*.log
+*.part
+*.tmp
+*.bak
+*.rs.bk
+.DS_Store
+Thumbs.db
+*.swp
+desktop.ini
+
+# Local support files
+docker-compose*.yml
+*.sql
