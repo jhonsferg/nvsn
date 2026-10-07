@@ -1,0 +1,25 @@
+function nvsn {
+    $nvsnBin = (Get-Command nvsn -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+    if (-not $nvsnBin) { Write-Error 'nvsn binary not found in PATH'; return }
+    if ($args.Count -gt 0 -and $args[0] -eq 'deactivate') {
+        _nvsn_deactivate
+        $global:LASTEXITCODE = 0
+        return
+    }
+    if ($args.Count -gt 0 -and $args[0] -in @('use', 'on', 'off')) {
+        $env:NVSN_INTEGRATION = '1'
+        try {
+            $nvsnScript = & $nvsnBin @args
+        } finally {
+            Remove-Item env:NVSN_INTEGRATION -ErrorAction SilentlyContinue
+        }
+        $nvsnExit = $LASTEXITCODE
+        if ($nvsnExit -eq 0 -and $nvsnScript) {
+            $nvsnScript | Out-String | Invoke-Expression
+        }
+    } else {
+        & $nvsnBin @args
+        $nvsnExit = $LASTEXITCODE
+    }
+    $global:LASTEXITCODE = $nvsnExit
+}
