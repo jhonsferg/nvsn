@@ -1,0 +1,7 @@
+# Accounts/orgs where the maintainer collaborates legitimately.
+# One GitHub username or org per line, case-insensitive.
+# Matches found under these owners are skipped by the clone-watch workflow.
+# Lines starting with # are comments.
+
+zonagol-pe
+wpillacam
