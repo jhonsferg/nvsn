@@ -184,7 +184,7 @@ fn dispatch(ctx: &Ctx, command: &Command) -> Result<(), CliError> {
             }
         },
         Command::Env { shell } => shell::env(ctx, shell.as_deref()),
-        Command::Init { shell, apply } => shell::init(ctx, shell, *apply),
+        Command::Init { shell, apply } => shell::init(ctx, shell.as_deref(), *apply),
         Command::Completions { shell } => shell::completions(*shell),
         Command::Local { version } => local::local(ctx, version),
         Command::Path { version } => path::path(ctx, version.as_deref()),
