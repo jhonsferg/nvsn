@@ -33,7 +33,7 @@ nvsn is a Node.js version manager built from scratch in Rust, by the same author
 - **Version files** - reads `.nvmrc` and `.node-version`, searching upwards from the current directory.
 - **Session-scoped activation** - `nvsn use` changes the version of the current terminal only, and `nvsn run` / `nvsn exec` run a version without changing the session at all.
 - **Global default for every application** - `nvsn default` also changes what login shells and graphical applications (editors and similar) see.
-- **Explicit setup** - `nvsn init <shell> --apply` writes the shell integration after asking for confirmation. Nothing edits your profile or your PATH silently.
+- **Explicit setup** - `nvsn init [shell] --apply` writes the shell integration after asking for confirmation (the installers pass `--yes` for their one-time automatic run; `nvsn` itself never does). Nothing edits your profile or your PATH silently.
 - **Scriptable** - `--json` output with a `schema_version` on most commands, and stable exit codes.
 - **Clean removal** - `nvsn implode` and `nvsn self-uninstall` remove what nvsn manages.
 
@@ -78,7 +78,7 @@ Plenty of excellent Node.js version managers exist. Choosing Rust for this one w
 irm https://raw.githubusercontent.com/jhonsferg/nvsn/main/install/install.ps1 | iex
 ```
 
-> Installs `nvsn.exe` to `~\.local\bin`. The archive's checksum is verified against `checksums.txt` before extraction, and no administrator rights are needed. The installer does not change your PATH or your profile: if `~\.local\bin` is not in your PATH, it tells you so. Then enable the shell integration with `nvsn init powershell --apply` and open a new terminal.
+> Installs `nvsn.exe` to `~\.local\bin`. The archive's checksum is verified against `checksums.txt` before extraction, and no administrator rights are needed. The installer detects PowerShell and runs `nvsn init --apply` for you; if it cannot (or you want to redo it later), run that command yourself. It does not change your PATH: if `~\.local\bin` is not in your PATH, it tells you so. Open a new terminal afterwards to load the integration.
 
 ### 🐧 Linux and 🍎 macOS
 
@@ -86,7 +86,7 @@ irm https://raw.githubusercontent.com/jhonsferg/nvsn/main/install/install.ps1 | 
 curl -fsSL https://raw.githubusercontent.com/jhonsferg/nvsn/main/install/install.sh | sh
 ```
 
-> Installs `nvsn` to `~/.local/bin`. The archive's checksum is verified against `checksums.txt` before the binary is installed, and the installer does not edit your shell profile. Then enable the shell integration with `nvsn init bash --apply` (or `zsh` or `fish`) and open a new terminal.
+> Installs `nvsn` to `~/.local/bin`. The archive's checksum is verified against `checksums.txt` before the binary is installed. The installer detects your shell (bash, zsh or fish, from `$SHELL`) and runs `nvsn init --apply` for you; if it cannot (or you want to redo it later), run that command yourself. Open a new terminal afterwards to load the integration.
 
 ### 📂 Custom install directory
 
@@ -145,8 +145,8 @@ Both scripts show what will be removed and ask for confirmation first. Use `--dr
 ## ⚡ Quick Start
 
 ```sh
-# 🐚 1. Enable shell integration (asks before writing to your profile)
-nvsn init bash --apply
+# 🐚 1. Enable shell integration (detects the shell, asks before writing to your profile)
+nvsn init --apply
 
 # 📥 2. Install the latest Node.js 24 release
 nvsn install 24
@@ -416,16 +416,16 @@ nvsn env --shell powershell | Out-String | Invoke-Expression
 
 ---
 
-### 🐚 `nvsn init <shell> [--apply]`
+### 🐚 `nvsn init [shell] [--apply]`
 
-Shows, or with `--apply` writes, the shell integration block for `bash`, `zsh`, `fish` or `powershell`. Without `--apply` it only prints the block and the profile path. With `--apply` it asks for confirmation (pass `--yes` in scripts).
+Shows, or with `--apply` writes, the shell integration block for `bash`, `zsh`, `fish` or `powershell`. Without `shell`, it detects the current one (same detection `env`/`deactivate`/`on` use). Without `--apply` it only prints the block and the profile path. With `--apply` it asks for confirmation (pass `--yes` in scripts).
 
 | Flag | Description |
 | ---- | ----------- |
 | `--apply` | Write the block into the shell profile. Asks unless `--yes` is given. |
 
 ```sh
-nvsn init bash             # 🖨️ shows the block
+nvsn init                  # 🔍 detects the shell, shows the block
 nvsn init bash --apply     # ✍️ writes it to ~/.bashrc (after confirmation)
 ```
 
