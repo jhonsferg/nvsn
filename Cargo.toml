@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/nvsn-platform",
+    "crates/nvsn-net",
+    "crates/nvsn-core",
+    "crates/nvsn-shell",
+    "crates/nvsn-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+# Shared dependencies. Base ported from gvsn 1.5.1 (MIT, same author).
+[workspace.dependencies]
+anyhow         = "1"
+clap           = { version = "4", features = ["derive", "color"] }
+clap_complete  = "4"
+colored        = "3"
+criterion      = "0.5"
+dirs           = "6"
+flate2         = "1"
+fs2            = "0.4"
+indicatif      = "0.18"
+semver         = "1"
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+sha2           = "0.11"
+tar            = "0.4"
+tempfile       = "3"
+toml           = "1"
+ureq          = { version = "3", features = ["rustls", "json"] }
+zip            = { version = "2", default-features = false, features = ["deflate"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+opt-level     = 3
+lto           = "fat"
+codegen-units = 1
+panic         = "abort"
+strip         = "symbols"
+debug         = false
+incremental   = false
