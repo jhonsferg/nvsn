@@ -213,8 +213,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Some pull_request events (seen on Dependabot PRs) report an identical
+      # base and head SHA. TruffleHog refuses to run then ("BASE and HEAD
+      # commits are the same") and exits non-zero - that outcome is
+      # indistinguishable from steps.trufflehog.outcome == 'failure' below,
+      # which the next step treats as "verified secrets found" and fails the
+      # job over. Skipping the scan when there is nothing to diff avoids
+      # that false alarm instead of trying to tell the two apart after the
+      # fact.
       - name: TruffleHog - scan git history (verified only)
         id: trufflehog
+        if: github.event_name != 'pull_request' || github.event.pull_request.base.sha != github.event.pull_request.head.sha
         uses: trufflesecurity/trufflehog@bcfcf73aaf4759d4dadc2783177c245a02792318 # v3.97.0
         continue-on-error: true
         with:
