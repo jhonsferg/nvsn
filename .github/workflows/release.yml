@@ -112,9 +112,25 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
+      # dtolnay/rust-toolchain's `@stable` ref installs the floating "stable"
+      # channel and adds `targets:` to THAT toolchain - but this repo's
+      # rust-toolchain.toml pins an exact version, which silently overrides
+      # the active toolchain on every cargo/rustc invocation afterwards. For
+      # a target that is not the runner's own host (every `!use_cross` leg
+      # below except the one matching the runner's native triple), that
+      # mismatch means the target was added to "stable" while the build
+      # actually runs under the pinned version, which never got it: cargo
+      # fails with "can't find crate for `core`". Reading the pinned version
+      # here and passing it explicitly keeps both in sync.
+      - name: Read pinned toolchain version
+        id: toolchain
+        shell: bash
+        run: echo "version=$(grep -m1 '^channel' rust-toolchain.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+
       - name: Install Rust toolchain (rust-toolchain.toml)
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ steps.toolchain.outputs.version }}
           targets: ${{ matrix.target }}
 
       - name: Cache Cargo registry and build artifacts
