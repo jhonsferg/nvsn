@@ -1,0 +1,37 @@
+[package]
+name = "nvsn-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "nvsn"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+ureq = { workspace = true }
+clap = { workspace = true }
+clap_complete = { workspace = true }
+colored = { workspace = true }
+indicatif = { workspace = true }
+nvsn-core = { path = "../nvsn-core" }
+nvsn-net = { path = "../nvsn-net" }
+nvsn-platform = { path = "../nvsn-platform" }
+nvsn-shell = { path = "../nvsn-shell" }
+semver = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+assert_cmd = "2"
+flate2 = { workspace = true }
+predicates = "3"
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tar = { workspace = true }
+tempfile = { workspace = true }
+zip = { workspace = true }
