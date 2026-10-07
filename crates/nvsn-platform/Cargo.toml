@@ -1,0 +1,23 @@
+[package]
+name = "nvsn-platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `unsafe` stays at `deny` (not `forbid`, which admits no exceptions) only to
+# allow the single justified call: the WM_SETTINGCHANGE broadcast in
+# `user_path`. See ADR-034.
+[lints.rust]
+unsafe_code = "deny"
+
+[dependencies]
+anyhow = { workspace = true }
+dirs   = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+winreg      = "0.52"
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
