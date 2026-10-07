@@ -1,0 +1,14 @@
+nvsn() {
+    case "${1-}" in
+        deactivate)
+            _nvsn_deactivate
+            return $?
+            ;;
+        use|on|off)
+            _nvsn_out="$(NVSN_INTEGRATION=1 command nvsn "$@")" || return $?
+            eval "$_nvsn_out"
+            return $?
+            ;;
+    esac
+    command nvsn "$@"
+}
