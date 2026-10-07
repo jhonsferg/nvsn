@@ -4,6 +4,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- `nvsn init` no longer requires a `shell` argument; it detects the current shell the same way `env`/`deactivate`/`on` already do.
+- `install.sh` and `install.ps1` now run `nvsn init --apply --yes` automatically right after placing the binary, instead of only printing that command as a next step.
+
 ## [0.1.0] - 2026-10-07
 
 ### Added
