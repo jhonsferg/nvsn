@@ -243,7 +243,29 @@ finally {
     if (Test-Path $StagingDir) { Remove-Item -Recurse -Force $StagingDir -ErrorAction SilentlyContinue }
 }
 
-# -- 7. Summary ----------------------------------------------------------------
+# -- 7. Shell integration -------------------------------------------------------
+# `nvsn init` with no shell argument detects the shell itself (PowerShell,
+# via $env:PSModulePath, which this installer always runs under), so no
+# detection logic is duplicated here. -Yes skips the confirmation prompt,
+# since `irm | iex` has no interactive stdin to answer it on. A failure here
+# does not undo the already-installed binary; it only means the user applies
+# the integration manually, same as before.
+Write-Host ""
+Write-Host "  Configuring shell integration..." -ForegroundColor White
+Write-Host ""
+$InitApplied = $true
+try {
+    & $Dest init --apply --yes
+    if ($LASTEXITCODE -ne 0) { $InitApplied = $false }
+}
+catch {
+    $InitApplied = $false
+}
+if (-not $InitApplied) {
+    Write-Warn "Could not configure shell integration automatically; run 'nvsn init --apply' yourself."
+}
+
+# -- 8. Summary ----------------------------------------------------------------
 $pathEntries = $env:Path -split ';' | ForEach-Object { $_.TrimEnd('\') }
 if ($pathEntries -notcontains $InstallDir.TrimEnd('\')) {
     Write-Host ""
@@ -251,12 +273,15 @@ if ($pathEntries -notcontains $InstallDir.TrimEnd('\')) {
 }
 
 Write-Host ""
-Write-Host "  nvsn $Version installed!" -ForegroundColor Green
+if ($InitApplied) {
+    Write-Host "  nvsn $Version installed and configured!" -ForegroundColor Green
+}
+else {
+    Write-Host "  nvsn $Version installed!" -ForegroundColor Green
+}
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor White
 Write-Host ""
-Write-Host "  1. Enable shell integration for PowerShell:" -ForegroundColor White
-Write-Host "       nvsn init powershell --apply" -ForegroundColor Cyan
-Write-Host "  2. Open a new terminal, then install a Node.js version:" -ForegroundColor White
+Write-Host "  1. Open a new terminal (to load the shell integration), then install a Node.js version:" -ForegroundColor White
 Write-Host "       nvsn install <version>" -ForegroundColor Cyan
 Write-Host ""
