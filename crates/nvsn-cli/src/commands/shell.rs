@@ -45,8 +45,8 @@ pub fn env(ctx: &Ctx, shell_name: Option<&str>) -> Result<(), CliError> {
 ///
 /// `usage` (2) if the shell is not valid; `confirmation-required` (9) with `--apply`
 /// and without a TTY nor `--yes`; general error if the profile cannot be written.
-pub fn init(ctx: &Ctx, shell_name: &str, apply: bool) -> Result<(), CliError> {
-    let shell = select_shell(Some(shell_name))?;
+pub fn init(ctx: &Ctx, shell_name: Option<&str>, apply: bool) -> Result<(), CliError> {
+    let shell = select_shell(shell_name)?;
     let home = ctx.home().ok_or_else(|| {
         CliError::general("cannot find your home directory").with_hint("set HOME (or USERPROFILE)")
     })?;
