@@ -1,0 +1,22 @@
+# Plantilla expect: entrar/salir de un directorio con .nvmrc, use y deactivate.
+# run-linux.sh sustituye @SPAWN@, @CD@, @PROBE@ (comando completo de sondeo)
+# y @OUT@ / @W@ antes de ejecutarla.
+set timeout 40
+log_user 0
+proc run {c} { send -- $c; send -- "\r"; sleep 1.5 }
+spawn @SPAWN@
+sleep 2
+run {cd "@W@"}
+run {@PROBE@ @OUT@/A.txt}
+run {cd /tmp}
+run {@PROBE@ @OUT@/B.txt}
+run {cd "@W@"}
+run {@PROBE@ @OUT@/C.txt}
+run {nvsn deactivate}
+run {@PROBE@ @OUT@/D.txt}
+run {nvsn use v20.11.1}
+run {@PROBE@ @OUT@/E.txt}
+run {cd /tmp}
+run {@PROBE@ @OUT@/F.txt}
+run {exit}
+expect eof
