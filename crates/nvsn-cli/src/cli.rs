@@ -296,8 +296,8 @@ pub enum Command {
 
     /// Show, or with --apply write, the shell integration for a shell.
     Init {
-        /// Target shell: bash, zsh, fish or powershell.
-        shell: String,
+        /// Target shell: bash, zsh, fish or powershell. Detected when omitted.
+        shell: Option<String>,
 
         /// Write the block into the shell profile (asks unless --yes).
         #[arg(long)]
@@ -623,5 +623,25 @@ mod tests {
             crate::commands::run::strip_separator(&words),
             ["--version".to_owned()]
         );
+    }
+
+    #[test]
+    fn init_without_a_shell_argument_parses_to_none() {
+        let cli = parse(&["init"]).expect("valid");
+        let Command::Init { shell, apply } = cli.command else {
+            panic!("expected init");
+        };
+        assert_eq!(shell, None);
+        assert!(!apply);
+    }
+
+    #[test]
+    fn init_with_a_shell_argument_parses_to_some() {
+        let cli = parse(&["init", "bash", "--apply"]).expect("valid");
+        let Command::Init { shell, apply } = cli.command else {
+            panic!("expected init");
+        };
+        assert_eq!(shell.as_deref(), Some("bash"));
+        assert!(apply);
     }
 }
