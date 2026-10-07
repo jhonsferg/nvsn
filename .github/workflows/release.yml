@@ -1,0 +1,435 @@
+name: Release
+
+# Triggered by pushing a version tag - either manually or by the auto-release
+# job in ci.yml. Builds compressed archives for all supported platforms, embeds
+# the tag version into Cargo.toml/Cargo.lock at compile time, generates
+# checksums + SBOM, creates the GitHub Release with structured notes and
+# uploads everything.
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  # Allows the auto-release job in ci.yml to dispatch this workflow explicitly
+  # after pushing a tag with GITHUB_TOKEN, which does not trigger push events.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  # -- Cross-compile for every supported target --------------------------------
+  #
+  # Naming convention (must stay in sync with
+  # crates/nvsn-cli/src/commands/self_update.rs::artifact_name()):
+  #   Archive: nvsn_{os}_{arch}.tar.gz  - Linux / macOS
+  #   Archive: nvsn_{os}_{arch}.zip     - Windows
+  build:
+    name: Build ${{ matrix.archive }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            binary: nvsn
+            archive: nvsn_linux_x86_64.tar.gz
+            kind: tar
+            use_cross: false
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            binary: nvsn
+            archive: nvsn_linux_aarch64.tar.gz
+            kind: tar
+            use_cross: true
+          - os: ubuntu-latest
+            target: aarch64-linux-android
+            binary: nvsn
+            archive: nvsn_android_aarch64.tar.gz
+            kind: tar
+            use_cross: true
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-musleabihf
+            binary: nvsn
+            archive: nvsn_linux_armv7.tar.gz
+            kind: tar
+            use_cross: true
+          - os: ubuntu-latest
+            target: i686-unknown-linux-musl
+            binary: nvsn
+            archive: nvsn_linux_386.tar.gz
+            kind: tar
+            use_cross: true
+          - os: ubuntu-latest
+            target: riscv64gc-unknown-linux-gnu
+            binary: nvsn
+            archive: nvsn_linux_riscv64.tar.gz
+            kind: tar
+            use_cross: true
+          - os: ubuntu-latest
+            target: s390x-unknown-linux-gnu
+            binary: nvsn
+            archive: nvsn_linux_s390x.tar.gz
+            kind: tar
+            use_cross: true
+          - os: ubuntu-latest
+            target: powerpc64le-unknown-linux-gnu
+            binary: nvsn
+            archive: nvsn_linux_ppc64le.tar.gz
+            kind: tar
+            use_cross: true
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary: nvsn
+            archive: nvsn_darwin_x86_64.tar.gz
+            kind: tar
+            use_cross: false
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary: nvsn
+            archive: nvsn_darwin_aarch64.tar.gz
+            kind: tar
+            use_cross: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: nvsn.exe
+            archive: nvsn_windows_x86_64.zip
+            kind: zip
+            use_cross: false
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            binary: nvsn.exe
+            archive: nvsn_windows_arm64.zip
+            kind: zip
+            use_cross: false
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Install Rust toolchain (rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo registry and build artifacts
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2
+        with:
+          key: release-${{ matrix.target }}
+
+      # The tag version is written into Cargo.toml and Cargo.lock before
+      # compiling, so `nvsn --version` and the self-update check report the
+      # correct version without committing anything to main.
+      #
+      # workflow_dispatch can run this workflow against a non-tag ref (a
+      # branch name), in which case GITHUB_REF_TYPE is "branch", not "tag" -
+      # falls back to a placeholder dev version instead of writing a
+      # nonsensical one derived from the branch name.
+      #
+      # sed note: macOS uses BSD sed which does not support GNU-only 0,/pat/
+      # address ranges. The simple s/^version = .../ pattern is portable
+      # because only the [workspace.package] version line starts at column 0
+      # in this repository's root Cargo.toml. Cargo.lock needs a two-line
+      # match per crate, so perl is used there instead.
+      - name: Set version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${GITHUB_REF_TYPE:-}" != "tag" ]; then VERSION="0.0.0-dev"; fi
+          # Cargo.toml - simple substitution, no GNU-only address ranges
+          sed -i.bak 's/^version = "[^"]*"/version = "'"${VERSION}"'"/' Cargo.toml
+          rm -f Cargo.toml.bak
+          # Cargo.lock - stateful perl: set flag on any local nvsn-* package
+          # name, replace version on next line. \r? makes the pattern work on
+          # both LF (Linux/macOS) and CRLF (Windows checkout).
+          perl -i.bak -pe 'if (/^name = "nvsn(-cli|-core|-net|-platform|-shell)?"\r?$/) { $f=1 } elsif ($f) { s/^version = "[^"]*"/version = "'"${VERSION}"'"/; $f=0 }' Cargo.lock
+          rm -f Cargo.lock.bak
+          echo "Version set to ${VERSION}"
+          grep '^version' Cargo.toml
+
+      - name: Install musl tools (Linux musl, native)
+        if: contains(matrix.target, 'musl') && !matrix.use_cross
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install cross (Docker)
+        if: matrix.use_cross
+        run: cargo install cross --locked
+
+      - name: Build binary (cross, Docker)
+        if: matrix.use_cross
+        run: cross build --release --locked --target ${{ matrix.target }} -p nvsn-cli
+
+      - name: Build binary (cargo, native)
+        if: "!matrix.use_cross"
+        run: cargo build --release --locked --target ${{ matrix.target }} -p nvsn-cli
+
+      - name: Package archive (tar.gz)
+        if: matrix.kind == 'tar'
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="target/${{ matrix.target }}/release"
+          cp "${OUT}/${{ matrix.binary }}" .
+          tar -czf "${{ matrix.archive }}" "${{ matrix.binary }}"
+          rm "${{ matrix.binary }}"
+          ls -l "${{ matrix.archive }}"
+
+      - name: Package archive (zip)
+        if: matrix.kind == 'zip'
+        shell: pwsh
+        run: |
+          $out = "target/${{ matrix.target }}/release/${{ matrix.binary }}"
+          Compress-Archive -Path $out -DestinationPath "${{ matrix.archive }}" -Force
+          Get-Item "${{ matrix.archive }}" | Format-List Name, Length
+
+      # -- Code signing (not wired in yet - see SECURITY.md) -------------------
+      #
+      # Windows archives ship unsigned for now. See SECURITY.md for how to
+      # verify a genuine release and report antivirus/SmartScreen false
+      # positives.
+
+      - name: Upload archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # -- Checksums - SBOM - Create Release - Upload Assets ------------------------
+  publish:
+    name: Publish Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    # secrets.* cannot be referenced directly in `if:` conditionals (GitHub
+    # rejects the whole workflow file at parse time) - route it through env
+    # first, which is one of the few places secrets are actually allowed.
+    env:
+      VIRUSTOTAL_CONFIGURED: ${{ secrets.VIRUSTOTAL_API_KEY != '' }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: List dist/ contents
+        run: ls -lh dist/
+
+      # -- checksums.txt ---------------------------------------------------------
+
+      - name: Generate checksums.txt
+        working-directory: dist
+        run: |
+          sha256sum nvsn_* > checksums.txt
+          echo ""
+          echo "=== checksums.txt ==="
+          cat checksums.txt
+
+      # -- SBOM -------------------------------------------------------------------
+
+      - name: Generate SBOM - CycloneDX JSON
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: dist/sbom.cyclonedx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Generate SBOM - SPDX JSON
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: spdx-json
+          output-file: dist/sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      # -- Generate release notes from conventional commits ----------------------
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          set -euo pipefail
+
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+
+          PREV_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | grep -v "^${TAG}$" | tail -1 || true)
+          [ -z "$PREV_TAG" ] && RANGE="HEAD" || RANGE="${PREV_TAG}..HEAD"
+
+          {
+            echo "## What's Changed in ${TAG}"
+            echo ""
+
+            BREAKING=$(git log "$RANGE" --format="%s" | grep -E '^[a-z]+(\([^)]*\))?!:' | sed 's/^[^:]*: //' || true)
+            if [ -n "$BREAKING" ]; then
+              echo "### Breaking Changes"
+              while IFS= read -r l; do [ -n "$l" ] && echo "- $l"; done <<< "$BREAKING"
+              echo ""
+            fi
+
+            FEATS=$(git log "$RANGE" --format="%s" | grep -E '^feat(\([^)]*\))?:' | sed 's/^feat[^:]*: //' || true)
+            if [ -n "$FEATS" ]; then
+              echo "### New Features"
+              while IFS= read -r l; do [ -n "$l" ] && echo "- $l"; done <<< "$FEATS"
+              echo ""
+            fi
+
+            FIXES=$(git log "$RANGE" --format="%s" | grep -E '^fix(\([^)]*\))?:' | sed 's/^fix[^:]*: //' || true)
+            if [ -n "$FIXES" ]; then
+              echo "### Bug Fixes"
+              while IFS= read -r l; do [ -n "$l" ] && echo "- $l"; done <<< "$FIXES"
+              echo ""
+            fi
+
+            REFACTORS=$(git log "$RANGE" --format="%s" | grep -E '^refactor(\([^)]*\))?:' | sed 's/^refactor[^:]*: //' || true)
+            if [ -n "$REFACTORS" ]; then
+              echo "### Refactoring"
+              while IFS= read -r l; do [ -n "$l" ] && echo "- $l"; done <<< "$REFACTORS"
+              echo ""
+            fi
+
+            SECURITY=$(git log "$RANGE" --format="%s" | grep -E '^security(\([^)]*\))?:' | sed 's/^security[^:]*: //' || true)
+            if [ -n "$SECURITY" ]; then
+              echo "### Security"
+              while IFS= read -r l; do [ -n "$l" ] && echo "- $l"; done <<< "$SECURITY"
+              echo ""
+            fi
+
+            PERF=$(git log "$RANGE" --format="%s" | grep -E '^perf(\([^)]*\))?:' | sed 's/^perf[^:]*: //' || true)
+            if [ -n "$PERF" ]; then
+              echo "### Performance"
+              while IFS= read -r l; do [ -n "$l" ] && echo "- $l"; done <<< "$PERF"
+              echo ""
+            fi
+
+            if [ -n "$PREV_TAG" ]; then
+              echo "---"
+              echo "**Full changelog**: https://github.com/${REPO}/compare/${PREV_TAG}...${TAG}"
+              echo ""
+            fi
+
+            echo "### Install or upgrade"
+            echo ""
+            echo "\`\`\`powershell"
+            echo "# Windows"
+            echo "irm https://raw.githubusercontent.com/${REPO}/main/install/install.ps1 | iex"
+            echo ""
+            echo "# Or upgrade in-place"
+            echo "nvsn self-update"
+            echo "\`\`\`"
+            echo ""
+            echo "\`\`\`sh"
+            echo "# Linux / macOS"
+            echo "curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install/install.sh | sh"
+            echo ""
+            echo "# Or upgrade in-place"
+            echo "nvsn self-update"
+            echo "\`\`\`"
+          } > /tmp/release_notes.md
+
+          cat /tmp/release_notes.md
+
+      # -- Create GitHub Release and upload all assets ---------------------------
+
+      - name: Create GitHub Release and upload assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+
+          # Idempotent: this workflow can be re-dispatched against an existing tag
+          # (e.g. to retry a failed step further down the pipeline), in which case
+          # the release already exists and must be updated instead of created.
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists - updating it instead of creating"
+            gh release edit "$TAG" \
+              --repo "${{ github.repository }}" \
+              --title "nvsn ${TAG}" \
+              --notes-file /tmp/release_notes.md \
+              --latest
+          else
+            gh release create "$TAG" \
+              --repo "${{ github.repository }}" \
+              --title "nvsn ${TAG}" \
+              --notes-file /tmp/release_notes.md \
+              --latest \
+              --verify-tag
+          fi
+
+          echo "Uploading assets for ${TAG} ..."
+          for file in dist/*; do
+            echo "  - $(basename "$file")"
+            gh release upload "$TAG" "$file" \
+              --repo "${{ github.repository }}" \
+              --clobber
+          done
+
+          echo "Release ${TAG} published with all assets"
+
+      # -- VirusTotal scan (optional, needs a VIRUSTOTAL_API_KEY secret) ---------
+      #
+      # Public transparency and a paper trail for antivirus/SmartScreen false
+      # positives: submits every release archive to VirusTotal and appends the
+      # per-file analysis link to the release notes. Skipped entirely (no
+      # failure, no step even runs) when the secret isn't configured - e.g. on
+      # forks. Get a free API key at https://www.virustotal.com/gui/join-us
+      # and add it as the VIRUSTOTAL_API_KEY repository secret to enable this.
+      # request_rate matches the public API's free-tier limit (4/minute).
+      - name: Scan release archives with VirusTotal
+        if: ${{ env.VIRUSTOTAL_CONFIGURED == 'true' }}
+        uses: crazy-max/ghaction-virustotal@936d8c5c00afe97d3d9a1af26d017cfdf26800a2 # v5.0.0
+        with:
+          vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+          update_release_body: true
+          request_rate: 4
+          files: |
+            dist/nvsn_*
+
+      # -- Workflow job summary ----------------------------------------------------
+
+      - name: Job summary
+        run: |
+          TAG="${{ github.ref_name }}"
+          {
+            echo "## Release Assets - ${TAG}"
+            echo ""
+            echo "| File | Size | Purpose |"
+            echo "|------|------|---------|"
+            for f in dist/nvsn_*; do
+              [ -f "$f" ] || continue
+              printf "| \`%s\` | %s | install archive |\n" \
+                "$(basename "$f")" "$(du -h "$f" | cut -f1)"
+            done
+            echo "| \`checksums.txt\` | - | SHA-256 integrity verification |"
+            echo "| \`sbom.cyclonedx.json\` | - | SBOM (CycloneDX) |"
+            echo "| \`sbom.spdx.json\` | - | SBOM (SPDX ISO/IEC 5962:2021) |"
+            echo ""
+            echo "### Checksums"
+            echo "\`\`\`"
+            cat dist/checksums.txt
+            echo "\`\`\`"
+            echo ""
+            if [ -n "${{ secrets.VIRUSTOTAL_API_KEY }}" ]; then
+              echo "### VirusTotal"
+              echo "Per-file scan links were appended to the [release notes](https://github.com/${{ github.repository }}/releases/tag/${TAG})."
+            else
+              echo "### VirusTotal"
+              echo "Skipped - no \`VIRUSTOTAL_API_KEY\` repository secret configured."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
