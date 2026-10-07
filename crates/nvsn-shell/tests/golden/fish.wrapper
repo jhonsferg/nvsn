@@ -1,0 +1,13 @@
+function nvsn
+    if contains -- $argv[1] use on off
+        set -l _nvsn_script (NVSN_INTEGRATION=1 command nvsn $argv)
+        or return $status
+        string join \n -- $_nvsn_script | source
+        return 0
+    end
+    if test "$argv[1]" = deactivate
+        _nvsn_deactivate
+        return $status
+    end
+    command nvsn $argv
+end
