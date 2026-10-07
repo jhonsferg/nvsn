@@ -217,8 +217,27 @@ if ! "$INSTALL_DIR/nvsn" --version > /dev/null 2>&1; then
     die "Installed binary failed to run: $INSTALL_DIR/nvsn --version"
 fi
 
-# -- 9. Summary ----------------------------------------------------------------
-printf "\n  ${C_GREEN}${C_BOLD}nvsn $NVSN_VERSION installed!${C_RESET}\n\n"
+# -- 9. Shell integration -------------------------------------------------------
+# `nvsn init` with no shell argument detects the shell itself (from $SHELL,
+# the same variable this installer runs under), so no detection logic is
+# duplicated here. --yes skips the confirmation prompt, since curl | sh has no
+# interactive stdin to answer it on. A failure here (e.g. an unsupported
+# shell, or no writable profile) does not undo the already-installed binary;
+# it only means the user applies the integration manually, same as before.
+printf "\n  ${C_BOLD}Configuring shell integration...${C_RESET}\n\n"
+if "$INSTALL_DIR/nvsn" init --apply --yes; then
+    INIT_APPLIED=1
+else
+    INIT_APPLIED=0
+    warn "Could not configure shell integration automatically; run 'nvsn init --apply' yourself."
+fi
+
+# -- 10. Summary -----------------------------------------------------------------
+if [ "$INIT_APPLIED" = "1" ]; then
+    printf "\n  ${C_GREEN}${C_BOLD}nvsn $NVSN_VERSION installed and configured!${C_RESET}\n\n"
+else
+    printf "\n  ${C_GREEN}${C_BOLD}nvsn $NVSN_VERSION installed!${C_RESET}\n\n"
+fi
 
 case ":$PATH:" in
     *":$INSTALL_DIR:"*) ;;
@@ -230,7 +249,5 @@ case ":$PATH:" in
 esac
 
 printf "  Next steps:\n\n"
-printf "  1. Enable shell integration (bash, zsh, fish or powershell):\n"
-printf "       ${C_CYAN}nvsn init bash --apply${C_RESET}\n"
-printf "  2. Open a new terminal, then install a Node.js version:\n"
+printf "  1. Open a new terminal (to load the shell integration), then install a Node.js version:\n"
 printf "       ${C_CYAN}nvsn install <version>${C_RESET}\n\n"
