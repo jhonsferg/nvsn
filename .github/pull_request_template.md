@@ -32,7 +32,7 @@
 
 - [ ] Commit message follows [Conventional Commits](https://www.conventionalcommits.org/) so auto-versioning works correctly
   - `feat:` -> minor bump, `fix:`/`perf:` -> patch bump, `feat!:` -> major bump
-- [ ] If `self_update.rs` or artifact naming changed: `artifact_name()` updated to match
+- [ ] If `upgrade.rs` or artifact naming changed: `artifact_name()` updated to match
 
 ### Security
 
