@@ -24,7 +24,7 @@ jobs:
   # -- Cross-compile for every supported target --------------------------------
   #
   # Naming convention (must stay in sync with
-  # crates/nvsn-cli/src/commands/self_update.rs::artifact_name()):
+  # crates/nvsn-cli/src/commands/upgrade.rs::artifact_name()):
   #   Archive: nvsn_{os}_{arch}.tar.gz  - Linux / macOS
   #   Archive: nvsn_{os}_{arch}.zip     - Windows
   build:
@@ -139,7 +139,7 @@ jobs:
           key: release-${{ matrix.target }}
 
       # The tag version is written into Cargo.toml and Cargo.lock before
-      # compiling, so `nvsn --version` and the self-update check report the
+      # compiling, so `nvsn --version` and the upgrade check report the
       # correct version without committing anything to main.
       #
       # workflow_dispatch can run this workflow against a non-tag ref (a
@@ -347,7 +347,7 @@ jobs:
             echo "irm https://raw.githubusercontent.com/${REPO}/main/install/install.ps1 | iex"
             echo ""
             echo "# Or upgrade in-place"
-            echo "nvsn self-update"
+            echo "nvsn upgrade"
             echo "\`\`\`"
             echo ""
             echo "\`\`\`sh"
@@ -355,7 +355,7 @@ jobs:
             echo "curl -fsSL https://raw.githubusercontent.com/${REPO}/main/install/install.sh | sh"
             echo ""
             echo "# Or upgrade in-place"
-            echo "nvsn self-update"
+            echo "nvsn upgrade"
             echo "\`\`\`"
           } > /tmp/release_notes.md
 
