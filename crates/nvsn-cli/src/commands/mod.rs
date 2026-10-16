@@ -14,8 +14,6 @@ pub mod packages;
 pub mod path;
 pub mod prune;
 pub mod run;
-pub mod self_uninstall;
-pub mod self_update;
 pub mod settings;
 pub mod shell;
 pub mod state;
