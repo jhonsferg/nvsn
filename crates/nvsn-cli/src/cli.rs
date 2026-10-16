@@ -393,9 +393,8 @@ pub enum Command {
     /// Check the installation and report problems. Exits 1 when a check fails.
     Doctor,
 
-    /// Update nvsn to the latest GitHub release. The SHA-256 is always verified.
-    #[command(visible_alias = "upgrade")]
-    SelfUpdate {
+    /// Upgrade nvsn to the latest GitHub release. The SHA-256 is always verified.
+    Upgrade {
         /// Only report whether a newer release exists.
         #[arg(long)]
         check: bool,
@@ -408,9 +407,6 @@ pub enum Command {
         #[arg(long, value_name = "N", default_value_t = 3, value_parser = clap::value_parser!(u8).range(0..=10))]
         retries: u8,
     },
-
-    /// Remove the nvsn binary and its data directory (NVSN_DIR).
-    SelfUninstall,
 
     /// Remove everything nvsn manages: data directory, binary and shell profile blocks.
     Implode {
@@ -602,6 +598,31 @@ mod tests {
             parse(&["on"]).expect("valid").command,
             Command::On { .. }
         ));
+    }
+
+    #[test]
+    fn upgrade_parses_its_flags() {
+        let cli = parse(&["upgrade", "--check", "--retries", "5"]).expect("valid");
+        let Command::Upgrade {
+            check,
+            force,
+            retries,
+        } = cli.command
+        else {
+            panic!("expected upgrade");
+        };
+        assert!(check);
+        assert!(!force);
+        assert_eq!(retries, 5);
+    }
+
+    #[test]
+    fn removed_self_commands_are_usage_errors() {
+        for name in ["self-update", "self-uninstall"] {
+            let err = parse(&[name]).expect_err("removed command");
+            assert_eq!(err.kind(), ErrorKind::InvalidSubcommand, "{name}");
+            assert_eq!(err.exit_code(), 2, "{name}");
+        }
     }
 
     #[test]

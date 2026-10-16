@@ -13,7 +13,7 @@
 //! - **No visible failures**: any error (network, JSON, cache) is ignored.
 //! - **Can be disabled**: `NVSN_NO_UPDATE_CHECK=1`, `CI` set or `--offline`.
 //!   It does not run for `env`, `path`, `__hook`, `deactivate`, `completions` or
-//!   `self-update` (that command already reports the version).
+//!   `upgrade` (that command already reports the version).
 
 use crate::cli::Command;
 use crate::ctx::Ctx;
@@ -119,7 +119,7 @@ fn should_run(command: &Command, offline: bool, disabled: bool, ci: bool) -> boo
             | Command::Hook { .. }
             | Command::Deactivate { .. }
             | Command::Completions { .. }
-            | Command::SelfUpdate { .. }
+            | Command::Upgrade { .. }
     )
 }
 
@@ -305,7 +305,7 @@ mod tests {
     fn excluded_commands_never_run_the_check() {
         let env = Command::Env { shell: None };
         let path = Command::Path { version: None };
-        let update = Command::SelfUpdate {
+        let update = Command::Upgrade {
             check: false,
             force: false,
             retries: 3,

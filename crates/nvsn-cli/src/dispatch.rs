@@ -6,7 +6,7 @@ use crate::cli::{Cli, Command, LtsArg};
 use crate::commands::install::InstallFlags;
 use crate::commands::{
     activate, cache, doctor, exec, implode, install, list, local, outdated, packages, path, prune,
-    run, self_uninstall, self_update, settings, shell, state, update_check,
+    run, settings, shell, state, update_check, upgrade,
 };
 use crate::ctx::Ctx;
 use crate::exit::CliError;
@@ -20,7 +20,7 @@ use crate::exit::CliError;
 ///
 /// Returns the command's `CliError`; `main` shows it and uses its exit code.
 pub fn run(cli: &Cli) -> Result<(), CliError> {
-    self_update::remove_stale_old();
+    upgrade::remove_stale_old();
     if let Command::Completions { shell } = &cli.command {
         return shell::completions(*shell);
     }
@@ -195,12 +195,11 @@ fn dispatch(ctx: &Ctx, command: &Command) -> Result<(), CliError> {
             scan_dir,
         } => prune::prune(ctx, *dry_run, *force, scan_dir.as_deref()),
         Command::Doctor => doctor::doctor(ctx),
-        Command::SelfUpdate {
+        Command::Upgrade {
             check,
             force,
             retries,
-        } => self_update::run(ctx, *check, *force, *retries),
-        Command::SelfUninstall => self_uninstall::run(ctx),
+        } => upgrade::run(ctx, *check, *force, *retries),
         Command::Implode { force } => implode::run(ctx, *force),
         Command::Arch { value } => settings::arch(ctx, value.as_deref()),
         Command::Proxy { value } => settings::proxy(ctx, value.as_deref()),
