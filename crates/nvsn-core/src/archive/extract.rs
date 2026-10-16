@@ -377,12 +377,15 @@ fn unpack_zip(archive: &Path, dest: &Path, limits: ExtractLimits) -> Result<()> 
         if entry.is_symlink() {
             bail!(
                 "symbolic links are not supported in zip archives: {}",
-                entry.name()
+                String::from_utf8_lossy(entry.name_raw())
             );
         }
-        let rel = entry
-            .enclosed_name()
-            .ok_or_else(|| anyhow!("unsafe path in zip archive: {:?}", entry.name()))?;
+        let rel = entry.enclosed_name().ok_or_else(|| {
+            anyhow!(
+                "unsafe path in zip archive: {:?}",
+                String::from_utf8_lossy(entry.name_raw())
+            )
+        })?;
         let out = dest.join(&rel);
 
         if entry.is_dir() {
