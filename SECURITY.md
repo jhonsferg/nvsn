@@ -25,7 +25,7 @@ within **7 days** for critical issues.
 
 - Arbitrary code execution via crafted `.nvmrc` / `.node-version` files
 - Path traversal in archive extraction
-- Binary substitution during `nvsn install` or `nvsn self-update` (SHA-256 bypass)
+- Binary substitution during `nvsn install` or `nvsn upgrade` (SHA-256 bypass)
 - Credential or secret leakage in logs or error messages
 
 ## Out of Scope
@@ -43,7 +43,7 @@ release is compromised. A few things about `nvsn` specifically make this more li
 - **Low file reputation**: every release produces a binary with a new hash, so cloud-based
   reputation systems (Windows Defender SmartScreen, and similarly in third-party AV) see it as
   "never seen before" on every version bump.
-- **Self-replacing update**: `nvsn self-update` downloads a new binary and replaces the currently
+- **Self-replacing update**: `nvsn upgrade` downloads a new binary and replaces the currently
   running executable in place. This is the same category of behavior some heuristic engines
   associate with malware droppers/updaters, even though it's implemented via the same
   atomic-rename pattern used by mainstream tools like `rustup`, `scoop`, and `nvm-windows` (which
