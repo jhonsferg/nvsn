@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 - `nvsn init` no longer requires a `shell` argument; it detects the current shell the same way `env`/`deactivate`/`on` already do.
 - `install.sh` and `install.ps1` now run `nvsn init --apply --yes` automatically right after placing the binary, instead of only printing that command as a next step.
+- `self-update` is now `upgrade`, with the same `--check`, `--force` and `--retries` flags. Its `--json` output reports `"command": "upgrade"`.
+
+### Removed
+
+- `self-update`: use `nvsn upgrade`. The old name is a usage error (exit code 2).
+- `self-uninstall`: use `nvsn implode`, which removes the same things (data directory, shell profile blocks, user PATH entries on Windows and the binary). The old name is a usage error (exit code 2).
 
 ## [0.1.0] - 2026-10-07
 
