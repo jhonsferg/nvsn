@@ -20,3 +20,4 @@ pub mod settings;
 pub mod shell;
 pub mod state;
 pub mod update_check;
+pub mod upgrade;
