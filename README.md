@@ -35,13 +35,13 @@ nvsn is a Node.js version manager built from scratch in Rust, by the same author
 - **Global default for every application** - `nvsn default` also changes what login shells and graphical applications (editors and similar) see.
 - **Explicit setup** - `nvsn init [shell] --apply` writes the shell integration after asking for confirmation (the installers pass `--yes` for their one-time automatic run; `nvsn` itself never does). Nothing edits your profile or your PATH silently.
 - **Scriptable** - `--json` output with a `schema_version` on most commands, and stable exit codes.
-- **Clean removal** - `nvsn implode` and `nvsn self-uninstall` remove what nvsn manages.
+- **Clean removal** - `nvsn implode` removes everything nvsn manages.
 
 ### 🦀 Why Rust?
 
 A fair question for a tool that manages Node.js. A few honest reasons, not a verdict on other languages:
 
-- **Memory safety for the riskiest operations.** `nvsn self-update` replaces its own running binary, `nvsn init --apply` writes to your shell profiles and `nvsn implode` deletes files across your home directory. These are exactly the operations where a memory bug turns into a corrupted install or a broken shell. Rust's ownership model rules out that class of bug at compile time.
+- **Memory safety for the riskiest operations.** `nvsn upgrade` replaces its own running binary, `nvsn init --apply` writes to your shell profiles and `nvsn implode` deletes files across your home directory. These are exactly the operations where a memory bug turns into a corrupted install or a broken shell. Rust's ownership model rules out that class of bug at compile time.
 - **One codebase, static binaries.** The release matrix covers Linux (musl), macOS, Windows and Android targets from one repository, with cross-compilation handled by `cross`.
 - **Independence from the ecosystem it manages.** nvsn is a standalone binary. Node.js is a runtime dependency of the Node.js tools it installs, not of nvsn itself.
 
@@ -65,7 +65,7 @@ Plenty of excellent Node.js version managers exist. Choosing Rust for this one w
 - 🪞 **Mirrors** - `--mirror <URL>`, HTTPS only
 - 🏁 **Shell completions** - Bash, Zsh, Fish and PowerShell
 - 🧾 **Machine-readable output** - `--json` with a stable `schema_version`
-- 🔄 **`nvsn self-update`** - update from GitHub Releases, with the checksum always verified
+- 🔄 **`nvsn upgrade`** - upgrade from GitHub Releases, with the checksum always verified
 - 💣 **`nvsn implode`** - remove nvsn and everything it manages
 
 ---
@@ -502,9 +502,9 @@ nvsn prune --force --scan-dir ~/projects
 
 ---
 
-### 🔄 `nvsn self-update` (alias `upgrade`)
+### 🔄 `nvsn upgrade`
 
-Updates nvsn to the latest release published on GitHub. The SHA-256 of the release is always verified; there is no option to skip it.
+Upgrades nvsn to the latest release published on GitHub. The SHA-256 of the release is always verified; there is no option to skip it.
 
 | Flag | Description |
 | ---- | ----------- |
@@ -513,21 +513,11 @@ Updates nvsn to the latest release published on GitHub. The SHA-256 of the relea
 | `--retries <N>` | Network retries with exponential back-off (1, 2, 4 s ...). Default `3`. |
 
 ```sh
-nvsn self-update --check
-nvsn self-update
+nvsn upgrade --check
+nvsn upgrade
 ```
 
-> 🔔 nvsn also checks for a newer release in the background after most commands (cached for 24 hours, never adds noticeable delay) and prints a short notice when one exists. It is disabled by `NVSN_NO_UPDATE_CHECK=1`, when `CI` is set, or with `--offline`. It never runs for `env`, `path`, `deactivate`, `completions`, the internal hook, or `self-update` itself.
-
----
-
-### 🧼 `nvsn self-uninstall`
-
-Removes the nvsn binary, its data directory (`NVSN_DIR`) and the nvsn blocks in your shell profiles. It asks for confirmation unless `--yes` is given. It never touches anything else in your profiles.
-
-```sh
-nvsn self-uninstall
-```
+> 🔔 nvsn also checks for a newer release in the background after most commands (cached for 24 hours, never adds noticeable delay) and prints a short notice when one exists. It is disabled by `NVSN_NO_UPDATE_CHECK=1`, when `CI` is set, or with `--offline`. It never runs for `env`, `path`, `deactivate`, `completions`, the internal hook, or `upgrade` itself.
 
 ---
 
@@ -544,7 +534,7 @@ nvsn implode           # 🗑️ shows a summary, asks for confirmation
 nvsn implode --force   # 💥 no questions asked
 ```
 
-> ⚠️ This operation is **irreversible**: your installed Node.js versions are deleted. To update instead, use `nvsn self-update`.
+> ⚠️ This operation is **irreversible**: your installed Node.js versions are deleted. To update instead, use `nvsn upgrade`.
 
 ---
 
@@ -625,7 +615,7 @@ nvsn is configured with command-line flags and environment variables. Flags take
 | `NVSN_DIR` | Per platform (see below) | 📁 Root directory for installed versions, cache, aliases and the default |
 | `NVSN_NODEJS_ORG_MIRROR` | `https://nodejs.org/dist` | 🪞 Node.js distribution mirror. HTTPS only, unless `--allow-http` |
 | `NVSN_NO_UPDATE_CHECK` | unset | 🔕 Set to `1` to disable the background update notice |
-| `NVSN_REPO` | `jhonsferg/nvsn` | 🔄 Repository used by `self-update` (`owner/name`) |
+| `NVSN_REPO` | `jhonsferg/nvsn` | 🔄 Repository used by `upgrade` (`owner/name`) |
 | `NVSN_INSTALL_DIR` | `~/.local/bin` (`%USERPROFILE%\.local\bin`) | 📂 Installer only: directory for the binary |
 | `NVSN_VERSION` | `latest` | 🏷️ Installer only: release tag to install (for example `v0.1.0`). The binary uses the same name for the active session version |
 | `NO_COLOR` | unset | 🎨 Disables colors |
