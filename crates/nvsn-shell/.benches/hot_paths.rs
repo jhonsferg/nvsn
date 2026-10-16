@@ -2,7 +2,7 @@
 //! path, picked from real call-graph fan-in rather than guessed:
 //!
 //! - [`nvsn_shell::ShellProfile::parse`] - re-parses the user's shell profile
-//!   on every `nvsn init`/`nvsn self-uninstall`/`nvsn implode` run, and is
+//!   on every `nvsn init`/`nvsn implode` run, and is
 //!   the direct analog of gvsn's own highest-emphasis benchmark (same
 //!   function name, same job: find nvsn-managed blocks among years of
 //!   accumulated unrelated profile content without disturbing it).
