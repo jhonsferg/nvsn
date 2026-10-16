@@ -103,3 +103,44 @@ fn files_next_to_the_binary_are_not_ours() {
 
     assert!(sibling.is_file(), "files next to the binary are not ours");
 }
+
+#[test]
+fn global_yes_confirms_like_force() {
+    let _lock = common::exec_lock();
+    let sandbox = tempfile::tempdir().expect("sandbox");
+    let store = sandbox.path().join("store");
+    populate_store(&store);
+    let bin = copy_binary(sandbox.path());
+    let outside = sandbox.path().join("keep.txt");
+    std::fs::write(&outside, b"user file").expect("outside");
+
+    nvsn(&bin, sandbox.path())
+        .args(["--yes", "--json", "implode"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"removed\""));
+
+    assert!(!store.exists(), "data directory must be removed");
+    assert!(
+        !bin.exists(),
+        "binary must be removed (or moved aside on Windows)"
+    );
+    assert_eq!(std::fs::read(&outside).expect("outside"), b"user file");
+}
+
+#[test]
+fn self_uninstall_is_no_longer_a_command() {
+    let _lock = common::exec_lock();
+    let sandbox = tempfile::tempdir().expect("sandbox");
+    let store = sandbox.path().join("store");
+    populate_store(&store);
+    let bin = copy_binary(sandbox.path());
+
+    nvsn(&bin, sandbox.path())
+        .args(["--yes", "self-uninstall"])
+        .assert()
+        .code(2);
+
+    assert!(store.join("versions/v20.11.1/bin/node").is_file());
+    assert!(bin.is_file());
+}
