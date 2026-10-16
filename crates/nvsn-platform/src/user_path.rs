@@ -154,7 +154,7 @@ fn edit_user_path(subkey: &str, change: impl FnOnce(&str) -> Edit) -> anyhow::Re
     }
 
     let raw = RegValue {
-        bytes: encode_utf16(&edit.value),
+        bytes: encode_utf16(&edit.value).into(),
         vtype,
     };
     key.set_raw_value("PATH", &raw)
@@ -304,7 +304,7 @@ mod tests {
                 .expect("create test key");
             if let Some(value) = initial_path {
                 let raw = RegValue {
-                    bytes: encode_utf16(value),
+                    bytes: encode_utf16(value).into(),
                     vtype: REG_EXPAND_SZ,
                 };
                 key.set_raw_value("PATH", &raw).expect("seed PATH");
