@@ -8,15 +8,14 @@
 //!    (see [`remove_user_path_entries`]).
 //! 4. The `nvsn` binary, always the last one.
 //!
-//! Safety is the same as `self-uninstall`: it only touches `NVSN_DIR`, the
-//! binary in use and the shell profiles, and it refuses to delete the root of the
-//! file system or a directory that contains the home.
+//! It only touches `NVSN_DIR`, the binary in use and the shell profiles, and it
+//! refuses to delete the root of the file system or a directory that contains
+//! the home.
 //!
-//! The logic of `self_uninstall.rs` is copied here instead of shared
-//! because that file is modified by another change in progress. When that finishes, it
-//! can be factored into a common module.
+//! This is the only uninstall command: the former `self-uninstall` did the same
+//! work and was removed to keep a single way of removing nvsn.
 
-use crate::commands::self_update::old_path;
+use crate::commands::upgrade::old_path;
 use crate::ctx::Ctx;
 use crate::exit::{CliError, ErrorKind};
 use crate::prompt::confirm;
@@ -174,7 +173,7 @@ pub fn run(ctx: &Ctx, force: bool) -> Result<(), CliError> {
 pub fn remove_user_path_entries(root: &Path) -> Result<(), CliError> {
     use nvsn_platform::user_path::{remove_user_path_under, ENVIRONMENT_KEY};
     // Implode deletes the running binary too, so its directory goes from the
-    // user PATH as well (self-uninstall keeps it, because it may be shared).
+    // user PATH as well.
     let mut dirs = vec![root.to_path_buf()];
     if let Some(bin_dir) = std::env::current_exe()
         .ok()
