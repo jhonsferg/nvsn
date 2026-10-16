@@ -240,8 +240,8 @@ pub fn exec_lock() -> MutexGuard<'static, ()> {
     EXEC_LOCK.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// Copies the nvsn test binary to `dir/bin/`. This way `self-update` and
-/// `self-uninstall` only touch the copy, never the cargo binary.
+/// Copies the nvsn test binary to `dir/bin/`. This way `upgrade` and
+/// `implode` only touch the copy, never the cargo binary.
 ///
 /// Must be called with `exec_lock()` held (see there for the reason).
 pub fn copy_binary(dir: &Path) -> PathBuf {
